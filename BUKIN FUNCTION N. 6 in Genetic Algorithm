@@ -95,12 +95,10 @@ def GA(dim, pop_size, cross_rate, mut_rate, iteration):
     BFV = float('inf')
     BFVS = []
     pop, dim = population(pop_size)
-    # FV = ackley_function(pop, dim)
     FV = bukin_function(pop)
     
     for iter in range(iteration):
         new_pop = update(dim, pop_size, pop, FV, cross_rate, mut_rate)
-        # FV = ackley_function(new_pop, dim)
         FV = bukin_function(new_pop)
         
         if np.min(FV) < BFV:
