@@ -1,0 +1,128 @@
+import numpy as np
+import matplotlib.pyplot as plt
+import time
+
+# 參數設定
+pop_size = 100
+cross_rate = 0.7
+mut_rate = 0.01
+iteration = 1000
+
+# 初始群體
+def population(pop_size):
+    
+    x1_ubound, x1_dbound = -15, -5
+    x2_ubound, x2_dbound = -3, 3
+    x1 = np.array([np.random.uniform(x1_ubound, x1_dbound) for p in range(pop_size)])
+    x2 = np.array([np.random.uniform(x2_ubound, x2_dbound) for p in range(pop_size)])
+    pop = np.column_stack((x1, x2))
+    dim = len(pop[0])
+    return pop, dim
+
+# 適應值計算
+def bukin_function(x):
+    FV = []
+    for p in x:
+
+        term1 = 100 * np.sqrt(abs(p[1] - 0.01 * (p[0] ** 2)))
+        term2 = 0.01 * abs(p[0] + 10)
+        func = term1 + term2
+        FV.append(func)
+
+    return FV
+
+# 複製 & 選擇, 交配, 突變
+def update(dim, pop_size, pop, FV, cross_rate, mut_rate):
+
+    ########### 複製 & 選擇 ###########
+    # 候選基因
+    select = np.copy(pop)
+    
+    parents = [] # 父母空間
+    TFV = np.sum(FV)
+    for _ in range(pop_size):
+        if TFV == 0:
+            parent = select[np.random.randint(0, dim-1)]
+            parents.append(parent)
+        else:
+            TFV = np.sum(FV)
+            select_prob = np.array([FV[i] / TFV for i in range(len(FV))]) # 比例
+            cumulative_prob = np.cumsum(select_prob)
+            
+            # 隨機數生成，範圍 [0, 1)
+            r = np.random.rand()
+            
+            # 根據累積概率選擇個體
+            for i in range(len(cumulative_prob)):
+                if r < cumulative_prob[0]: # 若 r 落在 0 ~ cum 之間
+                    parent = select[0]
+                elif cumulative_prob[i-1] < r <= cumulative_prob[i]: # 若 r 落在 cum1, cum2之間
+                    parent = select[i]
+            parents.append(parent)
+    parents = np.array(parents)
+
+    ########### 交配 ###########
+    new_pop = []
+    for _ in range(0, pop_size, 2):
+        n = np.random.choice(pop_size, 2, replace = False)
+        parent1, parent2 = parents[n[0]], parents[n[1]]
+        child1, child2 = np.copy(parent1), np.copy(parent2)
+
+        if np.random.rand() < cross_rate:
+            size = np.random.randint(1, dim)
+            points = np.sort(np.random.choice(dim, size, replace = False))
+ 
+            for point in points:
+                child1[point], child2[point] = parent2[point], parent1[point]
+        new_pop.extend([child1, child2])
+        
+    new_pop = np.array(new_pop)
+
+    ########### 突變 ###########
+    for individual in new_pop:
+        if np.random.rand() < mut_rate:
+            # n = np.random.choice(dim, 2, replace = False)
+            individual[0] = np.random.uniform(-15, -5)
+            individual[1] = np.random.uniform(-3, 3)
+            
+    return new_pop
+
+def GA(dim, pop_size, cross_rate, mut_rate, iteration):
+    
+    TCP = 0
+    ST = time.time()
+    BX = None
+    BFV = float('inf')
+    BFVS = []
+    pop, dim = population(pop_size)
+    # FV = ackley_function(pop, dim)
+    FV = bukin_function(pop)
+    
+    for iter in range(iteration):
+        new_pop = update(dim, pop_size, pop, FV, cross_rate, mut_rate)
+        # FV = ackley_function(new_pop, dim)
+        FV = bukin_function(new_pop)
+        
+        if np.min(FV) < BFV:
+            BFV = np.min(FV)
+            BX = new_pop[np.argmin(FV)]
+        BFVS.append(BFV)
+        pop = new_pop
+        
+    TCP += time.time() - ST
+    return BX, BFV, BFVS, TCP
+
+BX, BFV, BFVS, TCP = GA(dim, pop_size, cross_rate, mut_rate, iteration)
+print('最佳輸入值 = ', BX)
+print('最佳值 = ', BFV)
+print('CPU TIME = ', TCP)
+
+# 繪製收斂曲線
+plt.figure(figsize=(10, 5))
+plt.plot(BFVS, label='Best Fitness')
+plt.title('Convergence Curve of GA')
+plt.xlabel('Iteration')
+plt.ylabel('Best Fitness')
+plt.legend()
+plt.grid(True)
+plt.show()
