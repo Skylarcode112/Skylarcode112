@@ -1,0 +1,86 @@
+import numpy as np
+import matplotlib.pyplot as plt
+import time
+
+T = 1000
+alpha = 0.5
+iteration = 10000
+
+# 初始群體
+def population():
+    
+    # 使用列表生成式創建初始群體，每個個體是 [dim] 維的向量
+    pop = np.array([np.random.uniform(-32.768, 32.768, size = 10)])
+    dim = len(pop[0])
+    
+    return pop, dim
+
+# 適應值計算
+def ackley_function(x, dim, a = 20, b = 0.2, c = 2 * np.pi):
+
+    FV = []
+    for p in x:
+        
+        # 第一個項的計算
+        sum1 = np.sum(p**2)
+        term1 = -a * np.exp(-b * np.sqrt(sum1 / dim)) 
+        
+        
+        # 第二個項的計算
+        sum2 = np.sum(np.cos(c * p))
+        term2 = -np.exp(sum2 / dim)
+    
+        # 最後的常數項
+        func = term1 + term2 + a + np.exp(1)
+        FV.append(func)
+    return FV
+
+# 主程式
+def SA(T, alpha, iteration, dim, pop, FV):
+    
+    TCP = 0
+    ST = time.time()
+    BX, dim = population()
+    BFV = ackley_function(BX, dim)[0]
+    BFVS = []
+
+    for iter in range(iteration):
+        
+        ########### 移步 ###########
+        new_sol = np.copy(BX)
+        n = np.random.choice(dim, 1, replace=False)
+        new_sol[0, n[0]] += np.random.uniform(-5, 5)
+        NFV = ackley_function(new_sol, dim)[0]
+        
+        ########### 更新 ###########
+        if NFV <= BFV:
+            BFV = NFV
+            BX = new_sol
+        else:
+            delta = -(NFV - BFV)
+            pr = np.min([1, np.exp(delta / T)])
+            if np.random.uniform(0, 1) < pr:
+                BFV = NFV
+                BX = new_sol
+        BFVS.append(BFV)
+
+        ########### 退火 ###########
+        T = alpha * T
+        
+    TCP += time.time() - ST
+    return BX, BFV, BFVS, TCP
+
+BX, BFV, BFVS, TCP = SA(T, alpha, iteration, dim, pop, FV)
+print('最佳輸入值 =', BX)
+print('最佳值 =', BFV)
+print('CPU TIME =', TCP)
+
+# 繪製收斂曲線
+plt.figure(figsize=(10, 5))
+plt.plot(BFVS, label='Best Fitness')
+plt.title('Convergence Curve of GA')
+plt.xlabel('Iteration')
+plt.ylabel('Best Fitness')
+plt.legend()
+plt.grid(True)
+plt.show()
